@@ -27,16 +27,20 @@ export class RuleWalker extends SyntaxWalker {
     private options: any[];
     private failures: RuleFailure[];
     private sourceFile: ts.SourceFile;
+    private program: ts.Program;
+    private typeChecker: ts.TypeChecker;
     private disabledIntervals: IDisabledInterval[];
     private ruleName: string;
 
-    constructor(sourceFile: ts.SourceFile, options: IOptions) {
+    constructor(sourceFile: ts.SourceFile, options: IOptions, program?: ts.Program) {
         super();
 
         this.position = 0;
         this.failures = [];
         this.options = options.ruleArguments;
         this.sourceFile = sourceFile;
+        this.program = program;
+        this.typeChecker = program ? program.getTypeChecker() : undefined;
         this.limit = this.sourceFile.getFullWidth();
         this.disabledIntervals = options.disabledIntervals;
         this.ruleName = options.ruleName;
@@ -44,6 +48,14 @@ export class RuleWalker extends SyntaxWalker {
 
     public getSourceFile(): ts.SourceFile {
         return this.sourceFile;
+    }
+
+    public getProgram(): ts.Program {
+        return this.program;
+    }
+
+    public getTypeChecker(): ts.TypeChecker {
+        return this.typeChecker;
     }
 
     public getFailures(): RuleFailure[] {
