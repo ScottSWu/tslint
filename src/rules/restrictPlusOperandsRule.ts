@@ -55,7 +55,38 @@ class RestrictPlusOperandsWalker extends Lint.RuleWalker {
             if (leftType !== rightType) {
                 // mismatched types
                 const message = Rule.MISMATCHED_TYPES_FAILURE;
-                this.addFailure(this.createFailure(position, width, message));
+                // suggest a fix
+                if (leftType === "number" && rightType === "string") {
+                    let fixes = [
+                        {
+                            description: "turn left operand into a string",
+                            replacements: [
+                                {
+                                    endPosition: node.left.getEnd(),
+                                    startPosition: node.left.getStart(),
+                                    text: "\"" + node.left.getText() + "\"",
+                                },
+                            ],
+                        },
+                    ];
+                    this.addFailure(this.createFailure(position, width, message, fixes));
+                } else if (leftType === "string" && rightType === "number") {
+                    let fixes = [
+                        {
+                            description: "turn right operand into a string",
+                            replacements: [
+                                {
+                                    endPosition: node.right.getEnd(),
+                                    startPosition: node.right.getStart(),
+                                    text: "\"" + node.right.getText() + "\"",
+                                },
+                            ],
+                        },
+                    ];
+                    this.addFailure(this.createFailure(position, width, message, fixes));
+                } else {
+                    this.addFailure(this.createFailure(position, width, message));
+                }
             } else if (leftType !== "number" && leftType !== "string") {
                 // adding unsupported types
                 const message = Rule.UNSUPPORTED_TYPE_FAILURE + leftType;
