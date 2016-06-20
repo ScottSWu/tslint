@@ -28,6 +28,7 @@ console.log();
 console.log(colors.underline("Testing Lint Rules:"));
 /* tslint:enable:no-console */
 
+// const testDirectories = glob.sync("test/rules/no-unused-return-value/tslint.json").map(path.dirname);
 const testDirectories = glob.sync("test/rules/**/tslint.json").map(path.dirname);
 
 for (const testDirectory of testDirectories) {

@@ -1,0 +1,17 @@
+export * from "./testDepA.ts.lint"
+export var A = "Hello A";
+
+export * from "./testDepB.ts.lint"
+export class B {
+  x = "Hello B";
+}
+
+export * from "./testDepC.ts.lint"
+export interface C {
+  x: string;
+}
+
+export * from "./testDepD.ts.lint"
+export function D() {
+  return "Hello D";
+}
