@@ -1,0 +1,21 @@
+
+let x = " hello   ";
+x.trim();
+~~~~~~~~  [return value is unused]
+
+console.log(x)
+
+let confObj = {
+  confFn: () => {
+    return 1;
+  },
+
+  otherFn: () => {
+    return 2;
+  }
+}
+
+confObj.confFn();
+~~~~~~~~~~~~~~~~  [return value is unused]
+
+confObj.otherFn();

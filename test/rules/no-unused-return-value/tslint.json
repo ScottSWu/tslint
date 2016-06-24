@@ -1,5 +1,0 @@
-{
-  "rules": {
-    "no-unused-return-value": [true, ["confObj", "confFn"]]
-  }
-}

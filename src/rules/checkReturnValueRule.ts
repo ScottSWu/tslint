@@ -6,17 +6,21 @@ export class Rule extends Lint.Rules.TypedRule {
     public static metadata: Lint.IRuleMetadata = {
         ruleName: "check-return-value",
         description: "Enforces the return value of certain functions to be used.",
+        rationale: Lint.Utils.dedent`
+            Certain functions do not change the state of the calling object. If these
+            functions' return values are unused, then the function call could be removed
+            without any effects, indicating a possible bug.`,
         optionsDescription: Lint.Utils.dedent`
             A list of functions whose return values cannot be thrown away in
             form of ['function'], ['object name', 'function'] or ['type', 'function']. Use
-            ['no-built-ins'] to unwhitelist a built-in list of common functions.`,
+            ['no-built-ins'] to unblacklist a built-in list of common functions.`,
         options: {
             type: "list",
             listType: {
                 type: "array",
             },
         },
-        optionExamples: [`[true, ["no-built-ins"], ["Array", "push"], ["fn"], ["type", "fn"], ["obj", "fn"]]`],
+        optionExamples: [`[true, ["no-built-ins"], ["string", "trim"], ["fn"], ["type", "fn"], ["obj", "fn"]]`],
         type: "functionality",
     };
     /* tslint:enable:object-literal-sort-keys */
@@ -25,19 +29,16 @@ export class Rule extends Lint.Rules.TypedRule {
     public static CONSTRUCTOR_FAILURE_STRING = "constructed object is unused";
 
     public applyWithProgram(sourceFile: ts.SourceFile, program: ts.Program): Lint.RuleFailure[] {
-        return this.applyWithWalker(new NoUnusedReturnValueWalker(sourceFile, this.getOptions(), program));
+        return this.applyWithWalker(new CheckReturnValueWalker(sourceFile, this.getOptions(), program));
     }
 }
 
-class NoUnusedReturnValueWalker extends Lint.ProgramAwareRuleWalker {
+class CheckReturnValueWalker extends Lint.ProgramAwareRuleWalker {
     protected static builtins = [
         ["string", "trim"],
-        ["Array", "pop"],
-        ["Array", "sort"],
-        ["Array", "unshift"],
     ];
-    protected nameWhitelist: string[] = [];
-    protected propertyWhitelist: string[][] = [];
+    protected nameBlacklist: string[] = [];
+    protected propertyBlacklist: string[][] = [];
 
     constructor(sourceFile: ts.SourceFile, options: Lint.IOptions, program: ts.Program) {
         super(sourceFile, options, program);
@@ -49,76 +50,66 @@ class NoUnusedReturnValueWalker extends Lint.ProgramAwareRuleWalker {
                 if (arg[0] === "no-built-ins") {
                     addBuiltins = false;
                 } else {
-                    this.nameWhitelist.push(arg[0]);
+                    this.nameBlacklist.push(arg[0]);
                 }
             } else {
-                this.propertyWhitelist.push(arg);
+                this.propertyBlacklist.push(arg);
             }
         });
 
         if (addBuiltins) {
-            this.propertyWhitelist = this.propertyWhitelist.concat(NoUnusedReturnValueWalker.builtins);
+            this.propertyBlacklist = this.propertyBlacklist.concat(CheckReturnValueWalker.builtins);
         }
     }
 
     public visitCallExpression(node: ts.CallExpression) {
-        const typeName = this.getReturnType(node);
+        const tc = this.getTypeChecker();
+        const signature = tc.getResolvedSignature(node);
+        const typeName = tc.typeToString(tc.getReturnTypeOfSignature(signature));
 
-        if (typeName !== "void" && typeName !== "any" && node.parent.kind === ts.SyntaxKind.ExpressionStatement) {
+        if (typeName !== "void" && node.parent.kind === ts.SyntaxKind.ExpressionStatement) {
             // parent must not be an ExpressionStatement
             switch (node.expression.kind) {
                 case ts.SyntaxKind.PropertyAccessExpression:
-                    const propertyNode = node.expression as ts.PropertyAccessExpression;
-                    const propertySymbol = this.getType(propertyNode.expression).symbol;
-                    let propertyType = propertySymbol ? propertySymbol.name : "";
-                    let propertyObject = propertyNode.expression.getText();
-                    let propertyFunction = propertyNode.name.text;
-
-                    let propertyWhitelisted = false;
-                    if (this.nameWhitelist.indexOf(propertyFunction) >= 0) {
-                        propertyWhitelisted = true;
-                    } else {
-                        for (const property of this.propertyWhitelist) {
-                            if (property[1] === propertyFunction &&
-                                (property[0] === propertyType || property[0] === propertyObject)) {
-                                propertyWhitelisted = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (!propertyWhitelisted) {
-                        this.addFailure(this.createFailure(node.getStart(), node.getWidth(), Rule.FUNCTION_FAILURE_STRING));
-                    }
-                    break;
                 case ts.SyntaxKind.ElementAccessExpression:
-                    const elementNode = node.expression as ts.ElementAccessExpression;
-                    const elementSymbol = this.getType(elementNode.expression).symbol;
-                    let elementType = elementSymbol ? elementSymbol.name : "";
-                    let elementObject = elementNode.expression.getText();
-                    let elementFunction = elementNode.argumentExpression.getText();
+                    let expressionNode: ts.LeftHandSideExpression = undefined;
+                    if (node.expression.kind === ts.SyntaxKind.PropertyAccessExpression) {
+                        expressionNode = (node.expression as ts.PropertyAccessExpression).expression;
+                    } else if (node.expression.kind === ts.SyntaxKind.ElementAccessExpression) {
+                        expressionNode = (node.expression as ts.ElementAccessExpression).expression;
+                    }
+                    const nodeType = tc.getTypeAtLocation(expressionNode);
+                    const nodeTypeName = tc.typeToString(nodeType);
+                    const nodeSymbol = nodeType.symbol;
+                    const nodeSymbolName = (nodeSymbol) ? nodeSymbol.name : "";
+                    const nodeObject = expressionNode.getText();
+                    let nodeFunction = "";
+                    if (node.expression.kind === ts.SyntaxKind.PropertyAccessExpression) {
+                        nodeFunction = (node.expression as ts.PropertyAccessExpression).name.getText();
+                    } else if (node.expression.kind === ts.SyntaxKind.ElementAccessExpression) {
+                        nodeFunction = (node.expression as ts.ElementAccessExpression).argumentExpression.getText();
+                    }
 
-                    let elementWhitelisted = false;
-                    if (this.nameWhitelist.indexOf(elementFunction) >= 0) {
-                        elementWhitelisted = true;
+                    let blacklisted = false;
+                    if (this.nameBlacklist.indexOf(nodeFunction) >= 0) {
+                        blacklisted = true;
                     } else {
-                        for (const property of this.propertyWhitelist) {
-                            if (property[1] === elementFunction &&
-                                (property[0] === elementType || property[0] === elementObject)) {
-                                elementWhitelisted = true;
+                        for (const property of this.propertyBlacklist) {
+                            if (property[1] === nodeFunction && (property[0] === nodeTypeName ||
+                                property[0] === nodeSymbolName || property[0] === nodeObject)) {
+                                blacklisted = true;
                                 break;
                             }
                         }
                     }
 
-                    if (!elementWhitelisted) {
+                    if (blacklisted) {
                         this.addFailure(this.createFailure(node.getStart(), node.getWidth(), Rule.FUNCTION_FAILURE_STRING));
                     }
-
                     break;
                 case ts.SyntaxKind.Identifier:
                     const idNode = node.expression as ts.Identifier;
-                    if (this.nameWhitelist.indexOf(idNode.text) < 0) {
+                    if (this.nameBlacklist.indexOf(idNode.text) < 0) {
                         this.addFailure(this.createFailure(node.getStart(), node.getWidth(), Rule.FUNCTION_FAILURE_STRING));
                     }
                     break;
@@ -139,7 +130,7 @@ class NoUnusedReturnValueWalker extends Lint.ProgramAwareRuleWalker {
             case ts.SyntaxKind.ElementAccessExpression:
                 // TODO should this be a failure? e.g. new A().foo
             case ts.SyntaxKind.PropertyAccessExpression:
-                // TODO should this be a failure? e.g. new A()["foo"] bad style
+                // TODO should this be a failure? e.g. new A()["foo"]
             default:
                 break;
         }
