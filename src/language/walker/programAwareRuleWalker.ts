@@ -15,9 +15,26 @@
  * limitations under the License.
  */
 
-export * from "./blockScopeAwareRuleWalker";
-export * from "./ruleWalker";
-export * from "./programAwareRuleWalker";
-export * from "./scopeAwareRuleWalker";
-export * from "./skippableTokenAwareRuleWalker";
-export * from "./syntaxWalker";
+import * as ts from "typescript";
+import {IOptions} from "../../lint";
+import {RuleWalker} from "./ruleWalker";
+
+export class ProgramAwareRuleWalker extends RuleWalker {
+    private program: ts.Program;
+    private typeChecker: ts.TypeChecker;
+
+    constructor(sourceFile: ts.SourceFile, options: IOptions, program: ts.Program) {
+        super(sourceFile, options);
+
+        this.program = program;
+        this.typeChecker = program.getTypeChecker();
+    }
+
+    public getProgram(): ts.Program {
+        return this.program;
+    }
+
+    public getTypeChecker(): ts.TypeChecker {
+        return this.typeChecker;
+    }
+}

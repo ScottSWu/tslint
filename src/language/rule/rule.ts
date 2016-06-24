@@ -65,6 +65,8 @@ export interface IRuleMetadata {
 
 export type RuleType = "functionality" | "maintainability" | "style" | "typescript";
 
+export type RuleSeverity = "" | "none" | "info" | "warning" | "error";
+
 export interface IOptions {
     ruleArguments?: any[];
     ruleName: string;
@@ -137,13 +139,15 @@ export class RuleFailure {
     private failure: string;
     private ruleName: string;
     private fixes: IFix[];
+    private severity: RuleSeverity;
 
     constructor(sourceFile: ts.SourceFile,
                 start: number,
                 end: number,
                 failure: string,
                 ruleName: string,
-                fixes: IFix[] = []) {
+                fixes: IFix[] = [],
+                severity: RuleSeverity = "") {
 
         this.sourceFile = sourceFile;
         this.fileName = sourceFile.fileName;
@@ -152,6 +156,7 @@ export class RuleFailure {
         this.failure = failure;
         this.ruleName = ruleName;
         this.fixes = fixes;
+        this.severity = severity;
     }
 
     public getFileName() {
@@ -172,6 +177,18 @@ export class RuleFailure {
 
     public getFailure() {
         return this.failure;
+    }
+
+    public getSeverity() {
+        return this.severity;
+    }
+
+    public getFixes() {
+        return this.fixes;
+    }
+
+    public getFixCount() {
+        return this.fixes.length;
     }
 
     public toJson(): any {

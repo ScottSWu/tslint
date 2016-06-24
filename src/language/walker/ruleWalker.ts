@@ -22,25 +22,21 @@ import {doesIntersect} from "../utils";
 import {SyntaxWalker} from "./syntaxWalker";
 
 export class RuleWalker extends SyntaxWalker {
-    private limit: number;
-    private position: number;
-    private options: any[];
-    private failures: RuleFailure[];
-    private sourceFile: ts.SourceFile;
-    private program: ts.Program;
-    private typeChecker: ts.TypeChecker;
-    private disabledIntervals: IDisabledInterval[];
-    private ruleName: string;
+    protected limit: number;
+    protected position: number;
+    protected options: any[];
+    protected failures: RuleFailure[];
+    protected sourceFile: ts.SourceFile;
+    protected disabledIntervals: IDisabledInterval[];
+    protected ruleName: string;
 
-    constructor(sourceFile: ts.SourceFile, options: IOptions, program?: ts.Program) {
+    constructor(sourceFile: ts.SourceFile, options: IOptions) {
         super();
 
         this.position = 0;
         this.failures = [];
         this.options = options.ruleArguments;
         this.sourceFile = sourceFile;
-        this.program = program;
-        this.typeChecker = program ? program.getTypeChecker() : undefined;
         this.limit = this.sourceFile.getFullWidth();
         this.disabledIntervals = options.disabledIntervals;
         this.ruleName = options.ruleName;
@@ -48,14 +44,6 @@ export class RuleWalker extends SyntaxWalker {
 
     public getSourceFile(): ts.SourceFile {
         return this.sourceFile;
-    }
-
-    public getProgram(): ts.Program {
-        return this.program;
-    }
-
-    public getTypeChecker(): ts.TypeChecker {
-        return this.typeChecker;
     }
 
     public getFailures(): RuleFailure[] {
@@ -95,7 +83,7 @@ export class RuleWalker extends SyntaxWalker {
         }
     }
 
-    private existsFailure(failure: RuleFailure) {
+    protected existsFailure(failure: RuleFailure) {
         return this.failures.some((f) => f.equals(failure));
     }
 }

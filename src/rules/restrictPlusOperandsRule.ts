@@ -38,10 +38,7 @@ export class Rule extends Lint.Rules.TypedRule {
     }
 }
 
-class RestrictPlusOperandsWalker extends Lint.RuleWalker {
-    constructor(sourceFile: ts.SourceFile, options: Lint.IOptions, program: ts.Program) {
-        super(sourceFile, options, program);
-    }
+class RestrictPlusOperandsWalker extends Lint.ProgramAwareRuleWalker {
 
     public visitBinaryExpression(node: ts.BinaryExpression) {
         if (node.operatorToken.kind === ts.SyntaxKind.PlusToken) {

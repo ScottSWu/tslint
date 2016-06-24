@@ -77,6 +77,16 @@ let processed = optimist
             default: "prose",
             describe: "output format (prose, json, verbose, pmd, msbuild, checkstyle, vso)",
         },
+        "x": {
+            alias: "fix",
+            default: "none",
+            describe: "output suggested fixes of a certain level (none, info, warning, error)",
+        },
+        "m": {
+            alias: "fix-method",
+            default: "interactive",
+            describe: "method of applying fixes (interactive, patch, file)",
+        },
         "test": {
             describe: "test that tslint produces the correct output for the specified directory",
         },
@@ -179,6 +189,17 @@ tslint accepts the following commandline options:
         Additonal formatters can be added and used if the --formatters-dir
         option is set.
 
+    -x, --fix:
+        The severity level at which to apply fixes for. By default, fixes
+        not applied at all. This can be changed to any comma separated
+        combination of stylistic or formatting issues (info), warnings
+        (warning), and errors (error).
+
+    -m, --fix-method:
+        The method used to apply the specified fixes. By default, fixes will
+        be interactive, requiring user confirmation on each. Fixes can also
+        be provided in the form of patches (patch) or to files directly (file).
+
     --test:
         Runs tslint on the specified directory and checks if tslint's output matches
         the expected output in .lint files. Automatically loads the tslint.json file in the
@@ -218,6 +239,24 @@ const processFile = (file: string) => {
     });
 
     const lintResult = linter.lint();
+
+    if (argv.x !== "none") {
+        // Figure out what fixes to apply
+        let severities = argv.x.split(",");
+        for (const failure of lintResult.failures) {
+            // console.log("Error: " + failure.getRuleName());
+            // console.log(failure.getFailure());
+            if (severities.indexOf(failure.getSeverity()) >= 0 && failure.getFixCount() > 0) {
+                // console.log("Possible fixes:");
+                // let fixes = failure.getFixes();
+                /*
+                fixes.forEach(fix => {
+                    console.log("- ");
+                });
+                */
+            }
+        }
+    }
 
     if (lintResult.failureCount > 0) {
         outputStream.write(lintResult.output, () => {
