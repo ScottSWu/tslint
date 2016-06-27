@@ -71,6 +71,8 @@ export interface IRuleMetadata {
 
 export type RuleType = "functionality" | "maintainability" | "style" | "typescript";
 
+export type RuleSeverity = "" | "none" | "format" | "style" | "warning" | "error";
+
 export interface IOptions {
     ruleArguments?: any[];
     ruleName: string;
@@ -87,6 +89,19 @@ export interface IRule {
     isEnabled(): boolean;
     apply(sourceFile: ts.SourceFile): RuleFailure[];
     applyWithWalker(walker: RuleWalker): RuleFailure[];
+}
+
+export interface IReplacement {
+    position: number;
+    length: number;
+    text: string;
+}
+
+export interface IFix {
+    ruleName: string;
+    description: string;
+    severity: RuleSeverity;
+    replacements: IReplacement[];
 }
 
 export class RuleFailurePosition {
@@ -128,7 +143,8 @@ export class RuleFailure {
                 start: number,
                 end: number,
                 private failure: string,
-                private ruleName: string) {
+                private ruleName: string,
+                private fixes: IFix[] = []) {
 
         this.fileName = sourceFile.fileName;
         this.startPosition = this.createFailurePosition(start);
@@ -153,6 +169,14 @@ export class RuleFailure {
 
     public getFailure() {
         return this.failure;
+    }
+
+    public getFixes() {
+        return this.fixes;
+    }
+
+    public getFixCount() {
+        return this.fixes.length;
     }
 
     public toJson(): any {
