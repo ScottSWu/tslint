@@ -118,6 +118,10 @@ export class SyntaxWalker {
         this.walkChildren(node);
     }
 
+    protected visitExportDeclaration(node: ts.ExportDeclaration) {
+        this.walkChildren(node);
+    }
+
     protected visitExpressionStatement(node: ts.ExpressionStatement) {
         this.walkChildren(node);
     }
@@ -278,6 +282,10 @@ export class SyntaxWalker {
         this.walkChildren(node);
     }
 
+    protected visitThisKeyword(node: ts.ThisTypeNode) {
+        this.walkChildren(node);
+    }
+
     protected visitThrowStatement(node: ts.ThrowStatement) {
         this.walkChildren(node);
     }
@@ -410,6 +418,10 @@ export class SyntaxWalker {
 
             case ts.SyntaxKind.ExportAssignment:
                 this.visitExportAssignment(<ts.ExportAssignment> node);
+                break;
+
+            case ts.SyntaxKind.ExportDeclaration:
+                this.visitExportDeclaration(<ts.ExportDeclaration> node);
                 break;
 
             case ts.SyntaxKind.ExpressionStatement:
@@ -574,6 +586,10 @@ export class SyntaxWalker {
 
             case ts.SyntaxKind.TemplateExpression:
                 this.visitTemplateExpression(<ts.TemplateExpression> node);
+                break;
+
+            case ts.SyntaxKind.ThisKeyword:
+                this.visitThisKeyword(<ts.ThisTypeNode> node);
                 break;
 
             case ts.SyntaxKind.ThrowStatement:

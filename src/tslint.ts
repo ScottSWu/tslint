@@ -16,10 +16,10 @@
  */
 
 import * as ts from "typescript";
-import {IFormatter} from "./language/formatter/formatter";
-import {RuleFailure} from "./language/rule/rule";
-import {TypedRule} from "./language/rule/typedRule";
-import {getSourceFile} from "./language/utils";
+import { IFormatter } from "./language/formatter/formatter";
+import { RuleFailure } from "./language/rule/rule";
+import { TypedRule } from "./language/rule/typedRule";
+import { getSourceFile } from "./language/utils";
 import {
     DEFAULT_CONFIG,
     findConfiguration,
@@ -28,11 +28,11 @@ import {
     getRulesDirectories,
     loadConfigurationFromPath,
 } from "./configuration";
-import {EnableDisableRulesWalker} from "./enableDisableRules";
-import {findFormatter} from "./formatterLoader";
-import {ILinterOptionsRaw, ILinterOptions, LintResult} from "./lint";
-import {loadRules} from "./ruleLoader";
-import {arrayify} from "./utils";
+import { EnableDisableRulesWalker } from "./enableDisableRules";
+import { findFormatter } from "./formatterLoader";
+import { ILinterOptionsRaw, ILinterOptions, LintResult } from "./lint";
+import { loadRules } from "./ruleLoader";
+import { arrayify } from "./utils";
 
 class Linter {
     public static VERSION = "3.11.0";

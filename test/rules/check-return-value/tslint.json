@@ -1,0 +1,5 @@
+{
+  "rules": {
+    "check-return-value": [true, ["confObj", "confFn"]]
+  }
+}
