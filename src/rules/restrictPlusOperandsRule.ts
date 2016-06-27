@@ -52,7 +52,27 @@ class RestrictPlusOperandsWalker extends Lint.ProgramAwareRuleWalker {
 
             if (leftType !== rightType) {
                 // mismatched types
-                this.addFailure(this.createFailure(position, width, Rule.MISMATCHED_TYPES_FAILURE));
+                const message = Rule.MISMATCHED_TYPES_FAILURE;
+                // suggest a fix
+                if (leftType === "number" && rightType === "string") {
+                    let fixes = [this.createFix(
+                        "turn left operand into a string", "style",
+                        [this.createReplacement(
+                            node.left.getStart(),
+                            node.left.getFullWidth(),
+                            "\"" + node.left.getText() + "\"")])];
+                    this.addFailure(this.createFailure(position, width, message, fixes));
+                } else if (leftType === "string" && rightType === "number") {
+                    let fixes = [this.createFix(
+                        "turn right operand into a string", "style",
+                        [this.createReplacement(
+                            node.right.getStart(),
+                            node.right.getFullWidth(),
+                            "\"" + node.right.getText() + "\"")])];
+                    this.addFailure(this.createFailure(position, width, message, fixes));
+                } else {
+                    this.addFailure(this.createFailure(position, width, message));
+                }
             } else if (leftType !== "number" && leftType !== "string") {
                 // adding unsupported types
                 const failureString = Rule.UNSUPPORTED_TYPE_FAILURE_FACTORY(leftType);
