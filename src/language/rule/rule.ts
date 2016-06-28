@@ -92,7 +92,8 @@ export interface IRule {
 }
 
 export interface IReplacement {
-    position: number;
+    start: number;
+    end: number;
     length: number;
     text: string;
 }
@@ -177,6 +178,10 @@ export class RuleFailure {
 
     public getFixCount() {
         return this.fixes.length;
+    }
+
+    public hasSeverity(severities: string[]) {
+        return this.fixes.some(fix => severities.indexOf(fix.severity) >= 0);
     }
 
     public toJson(): any {

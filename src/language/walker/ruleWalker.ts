@@ -91,10 +91,11 @@ export class RuleWalker extends SyntaxWalker {
         };
     }
 
-    public createReplacement(position: number, length: number, text: string): IReplacement {
+    public createReplacement(start: number, length: number, text: string): IReplacement {
         return {
+            end: start + length,
             length: length,
-            position: position,
+            start: start,
             text: text,
         };
     }

@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import * as colors from "colors";
+import * as diff from "diff";
 import * as fs from "fs";
 import * as glob from "glob";
 import * as optimist from "optimist";
@@ -26,6 +28,7 @@ import {
     DEFAULT_CONFIG,
     findConfiguration,
 } from "./configuration";
+import {IReplacement, RuleFailure} from "./language/rule/rule";
 import {consoleTestResultHandler, runTest} from "./test";
 import * as Linter from "./tslint";
 
@@ -78,6 +81,16 @@ let processed = optimist
             alias: "format",
             default: "prose",
             describe: "output format (prose, json, verbose, pmd, msbuild, checkstyle, vso)",
+        },
+        "x": {
+            alias: "fix",
+            default: "none",
+            describe: "output suggested fixes of a certain level (none, info, warning, error)",
+        },
+        "m": {
+            alias: "fix-method",
+            default: "interactive",
+            describe: "method of applying fixes (interactive, patch, copy, direct)",
         },
         "test": {
             describe: "test that tslint produces the correct output for the specified directory",
@@ -187,6 +200,18 @@ tslint accepts the following commandline options:
         Additonal formatters can be added and used if the --formatters-dir
         option is set.
 
+    -x, --fix:
+        The severity level at which to apply fixes for. By default, fixes
+        not applied at all. This can be changed to any comma separated
+        combination of stylistic or formatting issues (info), warnings
+        (warning), and errors (error).
+
+    -m, --fix-method:
+        The method used to apply the specified fixes. By default, fixes will
+        be interactive, requiring user confirmation on each. Fixes can also
+        be provided in the form of a unified patch (patch), a copy of files
+        (copy) or to files directly (direct).
+
     --test:
         Runs tslint on the specified directory and checks if tslint's output matches
         the expected output in .lint files. Automatically loads the tslint.json file in the
@@ -216,6 +241,165 @@ if (argv.c && !fs.existsSync(argv.c)) {
     process.exit(1);
 }
 const possibleConfigAbsolutePath = argv.c != null ? path.resolve(argv.c) : null;
+
+let fixInteractive = (file: string, contents: string, failures: RuleFailure[]) => {
+    // Accumulate fix replacements
+    let replacements = failures.reduce((acc: IReplacement[], failure: RuleFailure) => {
+        const fileName = failure.getFileName();
+        const failureString = failure.getFailure();
+
+        const lineAndCharacter = failure.getStartPosition().getLineAndCharacter();
+        const positionTuple = `[${lineAndCharacter.line + 1}, ${lineAndCharacter.character + 1}]`;
+        let prompt = `${fileName}${positionTuple}: ${failureString}\n`;
+        let red = colors.red;
+        let green = colors.green;
+        failure.getFixes().forEach((fix) => {
+            prompt += "    [ ] " + fix.description + "\n";
+            fix.replacements.forEach((replacement) => {
+                // Find relevant lines
+                let start = replacement.start;
+                let end = start + replacement.length;
+                let previousLineBoundary = contents.lastIndexOf("\n", start) + 1;
+                let nextLineBoundary = contents.indexOf("\n", end);
+                if (nextLineBoundary === -1) {
+                    nextLineBoundary = contents.length;
+                }
+                // Modify the snippet
+                let snippet = contents.substring(previousLineBoundary, nextLineBoundary);
+                let newSnippet = snippet.substring(0, start - previousLineBoundary) +
+                    replacement.text + snippet.substring(end - previousLineBoundary);
+
+                snippet.split("\n").forEach((line) => {
+                    prompt += red("        - " + line + "\n");
+                });
+                newSnippet.split("\n").forEach((line) => {
+                    prompt += green("        + " + line + "\n");
+                });
+            });
+        });
+        prompt += "    [ ] Do not fix\n";
+        process.stdout.write(prompt);
+        // TODO Get selection through ansi-escape
+        return acc;
+    }, []);
+
+    if (replacements.length > 0) {
+        // Sort in reverse order
+        replacements.sort((a, b) => b.end - a.end);
+
+        // Apply
+        // TODO Make sure there is no overlap, choose the most fixes otherwise
+        let newContents = contents;
+
+        // Make the fixes directory
+        const fixDir = path.join(process.cwd(), "fixes");
+        if (!fs.existsSync(fixDir)) {
+            fs.mkdirSync(fixDir);
+        }
+        replacements.forEach(r => {
+            newContents = newContents.substring(0, r.start) +
+                r.text + contents.substring(r.end);
+        });
+        // Overwrite file
+        fs.writeFileSync(file, newContents);
+    }
+};
+
+let fixPatch = (file: string, contents: string, failures: RuleFailure[]) => {
+    // Accumulate fix replacements
+    let replacements = failures.reduce((acc: IReplacement[], f: RuleFailure) => {
+        if (f.getFixes().length > 0) {
+            return acc.concat(f.getFixes()[0].replacements);
+        } else {
+            return acc;
+        }
+    }, []);
+
+    if (replacements.length > 0) {
+        // Sort in reverse order
+        replacements.sort((a, b) => b.end - a.end);
+
+        // Apply
+        // TODO Make sure there is no overlap, choose the most fixes otherwise
+        let newContents = contents;
+
+        // Make the fixes directory
+        const fixDir = path.join(process.cwd(), "fixes");
+        if (!fs.existsSync(fixDir)) {
+            fs.mkdirSync(fixDir);
+        }
+        replacements.forEach(r => {
+            newContents = newContents.substring(0, r.start) +
+                r.text + newContents.substring(r.end);
+        });
+        // Save new source in a 'fixes' folder with the same structure
+        const newPath = path.relative(process.cwd(), file) + ".patch";
+        mkdirParents(fixDir, path.dirname(newPath));
+        const patch = diff.createPatch(files, contents, newContents, "original", "fixed");
+        fs.writeFileSync(path.join(fixDir, newPath), patch);
+    }
+};
+
+let fixCopy = (file: string, contents: string, failures: RuleFailure[]) => {
+    // Accumulate fix replacements
+    let replacements = failures.reduce((acc: IReplacement[], f: RuleFailure) => {
+        if (f.getFixes().length > 0) {
+            return acc.concat(f.getFixes()[0].replacements);
+        } else {
+            return acc;
+        }
+    }, []);
+
+    if (replacements.length > 0) {
+        // Sort in reverse order
+        replacements.sort((a, b) => b.end - a.end);
+
+        // Apply
+        // TODO Make sure there is no overlap, choose the most fixes otherwise
+        let newContents = contents;
+
+        // Make the fixes directory
+        const fixDir = path.join(process.cwd(), "fixes");
+        if (!fs.existsSync(fixDir)) {
+            fs.mkdirSync(fixDir);
+        }
+        replacements.forEach(r => {
+            newContents = newContents.substring(0, r.start) +
+                r.text + newContents.substring(r.end);
+        });
+        // Save new source in a 'fixes' folder with the same structure
+        const newPath = path.relative(process.cwd(), file);
+        mkdirParents(fixDir, path.dirname(newPath));
+        fs.writeFileSync(path.join(fixDir, newPath), newContents);
+    }
+};
+
+let fixDirect = (file: string, contents: string, failures: RuleFailure[]) => {
+    // Accumulate fix replacements
+    let replacements = failures.reduce((acc: IReplacement[], f: RuleFailure) => {
+        if (f.getFixes().length > 0) {
+            return acc.concat(f.getFixes()[0].replacements);
+        } else {
+            return acc;
+        }
+    }, []);
+
+    if (replacements.length > 0) {
+        // Sort in reverse order
+        replacements.sort((a, b) => b.end - a.end);
+
+        // Apply
+        // TODO Make sure there is no overlap, choose the most fixes otherwise
+        let newContents = contents;
+
+        replacements.forEach(r => {
+            newContents = newContents.substring(0, r.start) +
+                r.text + newContents.substring(r.end);
+        });
+        // Overwrite file
+        fs.writeFileSync(file, newContents);
+    }
+};
 
 const processFile = (file: string, program?: ts.Program) => {
     if (!fs.existsSync(file)) {
@@ -251,12 +435,45 @@ const processFile = (file: string, program?: ts.Program) => {
 
     const lintResult = linter.lint();
 
+    if (argv.x !== "none") {
+        // Filter by severity and fixes
+        let severities = argv.x.split(",");
+        let fixFailures: RuleFailure[] = lintResult.failures.filter(failure =>
+            failure.hasSeverity(severities) && failure.getFixCount() > 0);
+
+        switch (argv.m) {
+            default:
+            case "interactive":
+                fixInteractive(file, contents, fixFailures);
+                break;
+            case "patch":
+                fixPatch(file, contents, fixFailures);
+                break;
+            case "copy":
+                fixCopy(file, contents, fixFailures);
+                break;
+            case "direct":
+                fixDirect(file, contents, fixFailures);
+                break;
+        }
+    }
+
     if (lintResult.failureCount > 0) {
         outputStream.write(lintResult.output, () => {
             process.exit(argv.force ? 0 : 2);
         });
     }
 };
+
+// Create parent direcotries
+function mkdirParents(baseDir: string, dir: string) {
+    if (dir === "." || fs.existsSync(path.join(baseDir, dir))) {
+        return;
+    } else {
+        mkdirParents(baseDir, path.dirname(dir));
+        fs.mkdirSync(path.join(baseDir, dir));
+    }
+}
 
 // if both files and tsconfig are present, use files
 let files = argv._;

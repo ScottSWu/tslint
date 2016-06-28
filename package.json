@@ -20,6 +20,7 @@
     "test": "grunt"
   },
   "dependencies": {
+    "ansi-escape": "^1.1.0",
     "colors": "^1.1.2",
     "diff": "^2.2.1",
     "findup-sync": "~0.3.0",
