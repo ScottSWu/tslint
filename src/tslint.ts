@@ -47,6 +47,28 @@ class Linter {
     private program: ts.Program;
     private options: ILinterOptions;
 
+    public static createProgram(configFile: string, projectDirectory?: string): ts.Program {
+        if (projectDirectory === undefined) {
+            const lastSeparator = configFile.lastIndexOf("/");
+            if (lastSeparator < 0) {
+                projectDirectory = ".";
+            } else {
+                projectDirectory = configFile.substring(0, lastSeparator + 1);
+            }
+        }
+
+        const {config} = ts.readConfigFile(configFile, ts.sys.readFile);
+        const parsed = ts.parseJsonConfigFileContent(config, {readDirectory: ts.sys.readDirectory}, projectDirectory);
+        const host = ts.createCompilerHost(parsed.options, true);
+        const program = ts.createProgram(parsed.fileNames, parsed.options, host);
+
+        return program;
+    }
+
+    public static getFileNames(program: ts.Program): string[] {
+        return program.getSourceFiles().map(s => s.fileName).filter(l => l.substr(5) !== ".d.ts");
+    }
+
     constructor(fileName: string, source: string, options: ILinterOptionsRaw, program?: ts.Program) {
         this.fileName = fileName;
         this.source = source;

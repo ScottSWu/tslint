@@ -19,6 +19,7 @@ import * as fs from "fs";
 import * as glob from "glob";
 import * as optimist from "optimist";
 import * as path from "path";
+import * as ts from "typescript";
 import * as Linter from "./tslint";
 import {
     CONFIG_FILENAME,
@@ -79,6 +80,12 @@ let processed = optimist
         },
         "test": {
             describe: "test that tslint produces the correct output for the specified directory",
+        },
+        "tsconfig": {
+            describe: "location of tsconfig.json file",
+        },
+        "project-dir": {
+            describe: "root project directory",
         },
         "v": {
             alias: "version",
@@ -185,6 +192,14 @@ tslint accepts the following commandline options:
         specified directory as the configuration file for the tests. See the
         full tslint documentation for more details on how this can be used to test custom rules.
 
+    --tsconfig:
+        Compiles the project using the config provided before running the
+        linter. This exposes the type checker to linting rules.
+
+    --project-dir:
+        Path to the project root directory. By default this is the same folder
+        containing the tsconfig.json file.
+
     -v, --version:
         The current version of tslint.
 
@@ -201,7 +216,7 @@ if (argv.c && !fs.existsSync(argv.c)) {
 }
 const possibleConfigAbsolutePath = argv.c != null ? path.resolve(argv.c) : null;
 
-const processFile = (file: string) => {
+const processFile = (file: string, program?: ts.Program) => {
     if (!fs.existsSync(file)) {
         console.error(`Unable to open file: ${file}`);
         process.exit(1);
@@ -231,7 +246,7 @@ const processFile = (file: string) => {
         formatter: argv.t,
         formattersDirectory: argv.s,
         rulesDirectory: argv.r,
-    });
+    }, program);
 
     const lintResult = linter.lint();
 
@@ -242,8 +257,17 @@ const processFile = (file: string) => {
     }
 };
 
-const files = argv._;
+// if both files and tsconfig are present, compile but only lint the given files
+let files = argv._;
+let program: ts.Program = undefined;
+
+if (argv.tsconfig != null) {
+    program = Linter.createProgram(argv.tsconfig, argv.projectDir);
+    if (files.length === 0) {
+        files = Linter.getFileNames(program);
+    }
+}
 
 for (const file of files) {
-    glob.sync(file, { ignore: argv.e }).forEach(processFile);
+    glob.sync(file, { ignore: argv.e }).forEach((file) => processFile(file, program));
 }
