@@ -44,3 +44,18 @@ var contents = fs.readFileSync(fileName, "utf8");
 var ll = new Linter(fileName, contents, options);
 var result = ll.lint();
 ```
+
+### Type Checking ###
+-----
+
+To enable rules that work with the type checker, a program object can be passed to the linter. The program object can be created with helper functions.
+
+
+```ts
+var program = Linter.createProgram("tsconfig.json", "projectDir/");
+ts.getPreEmitDiagnostics(program);
+var files = Linter.getFileNames(program);
+
+var results = files.map(file => new Linter(file,
+    program.getSourceFile(file).getFullText(), program.lint()));
+```
