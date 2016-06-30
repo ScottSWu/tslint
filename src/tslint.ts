@@ -47,7 +47,7 @@ class Linter {
     private program: ts.Program;
     private options: ILinterOptions;
 
-    public static getProgram(configFile: string, projectDirectory?: string): ts.Program {
+    public static createProgram(configFile: string, projectDirectory?: string): ts.Program {
         if (projectDirectory === undefined) {
             const lastSeparator = configFile.lastIndexOf("/");
             if (lastSeparator < 0) {
@@ -66,7 +66,7 @@ class Linter {
     }
 
     public static getFileNames(program: ts.Program): string[] {
-        return program.getSourceFiles().map(s => s.fileName).filter(l => l.substr(5) !== ".d.ts");
+        return program.getSourceFiles().map(s => s.fileName).filter(l => l.substr(-5) !== ".d.ts");
     }
 
     constructor(fileName: string, source: string, options: ILinterOptionsRaw, program?: ts.Program) {
@@ -81,6 +81,10 @@ class Linter {
         let sourceFile: ts.SourceFile;
         if (this.program) {
             sourceFile = this.program.getSourceFile(this.fileName);
+            // check if the program has been type checked
+            if (!("resolvedModules" in sourceFile)) {
+                throw new Error("Program must be type checked before linting");
+            }
         } else {
             sourceFile = getSourceFile(this.fileName, this.source);
         }

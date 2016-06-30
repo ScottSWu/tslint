@@ -22,13 +22,13 @@ import {doesIntersect} from "../utils";
 import {SyntaxWalker} from "./syntaxWalker";
 
 export class RuleWalker extends SyntaxWalker {
-    protected limit: number;
-    protected position: number;
-    protected options: any[];
-    protected failures: RuleFailure[];
-    protected sourceFile: ts.SourceFile;
-    protected disabledIntervals: IDisabledInterval[];
-    protected ruleName: string;
+    private limit: number;
+    private position: number;
+    private options: any[];
+    private failures: RuleFailure[];
+    private sourceFile: ts.SourceFile;
+    private disabledIntervals: IDisabledInterval[];
+    private ruleName: string;
 
     constructor(sourceFile: ts.SourceFile, options: IOptions) {
         super();
