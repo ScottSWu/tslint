@@ -33,7 +33,7 @@ Options:
 -t, --format          output format (prose, json, verbose, pmd, msbuild, checkstyle, vso)    [default: "prose"]
 --test                test that tslint produces the correct output for the specified directory
 --project             tsconfig file
---typechecking        enable type checking when linting a project
+--type-check          enable type checking when linting a project
 -v, --version         current version
 ```
 
@@ -108,7 +108,7 @@ tslint accepts the following command-line options:
     The location of a tsconfig.json file that will be used to determine which
     files will be linted.
 
---typechecking
+--type-check
     Enables the type checker when running linting rules. --project must be
     specified in order to enable type checking.
 
