@@ -53,7 +53,9 @@ export class Rule extends Lint.Rules.AbstractRule {
     /* tslint:enable:object-literal-sort-keys */
 
     public static SINGLE_QUOTE_FAILURE = "\" should be '";
+    public static SINGLE_QUOTE_FIX = "replace \" with '";
     public static DOUBLE_QUOTE_FAILURE = "' should be \"";
+    public static DOUBLE_QUOTE_FIX = "replace ' with \"";
 
     public isEnabled(): boolean {
         if (super.isEnabled()) {
@@ -114,8 +116,17 @@ class QuotemarkWalker extends Lint.RuleWalker {
                 const failureMessage = (quoteMark === QuoteMark.SINGLE_QUOTES)
                     ? Rule.SINGLE_QUOTE_FAILURE
                     : Rule.DOUBLE_QUOTE_FAILURE;
+                const fixMessage = (quoteMark === QuoteMark.SINGLE_QUOTES)
+                    ? Rule.SINGLE_QUOTE_FIX
+                    : Rule.DOUBLE_QUOTE_FIX;
+                const fixes = [
+                    this.createFix(fixMessage, [
+                        this.createReplacement(node.getStart(), 1, expectedQuoteMark),
+                        this.createReplacement(node.getEnd() - 1, 1, expectedQuoteMark),
+                    ]),
+                ];
 
-                this.addFailure(this.createFailure(position, width, failureMessage));
+                this.addFailure(this.createFailure(position, width, failureMessage, fixes));
             }
         }
 

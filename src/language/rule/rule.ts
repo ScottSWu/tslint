@@ -96,10 +96,30 @@ export interface IReplacement {
     text: string;
 }
 
-export interface IFix {
-    ruleName: string;
-    description: string;
-    replacements: IReplacement[];
+export class Fix {
+    constructor(private ruleName: string, private description: string, private replacements: IReplacement[]) {
+    }
+
+    public getRuleName() {
+        return this.ruleName;
+    }
+
+    public getDescription() {
+        return this.description;
+    }
+
+    public getReplacements() {
+        return this.replacements;
+    }
+
+    public apply(content: string) {
+		// Sort in reverse so that diffs are properly applied
+        this.replacements.sort((a, b) => b.end - a.end);
+        const newContent = this.replacements.reduce((acc, r) => {
+            return acc.substring(0, r.start) + r.text + acc.substring(r.end);
+        }, content);
+        return newContent;
+    }
 }
 
 export class RuleFailurePosition {
@@ -142,11 +162,15 @@ export class RuleFailure {
                 end: number,
                 private failure: string,
                 private ruleName: string,
-                private fixes: IFix[] = []) {
+                private fixes: Fix[] = []) {
 
         this.fileName = sourceFile.fileName;
         this.startPosition = this.createFailurePosition(start);
         this.endPosition = this.createFailurePosition(end);
+    }
+
+    public getSourceFile() {
+        return this.sourceFile;
     }
 
     public getFileName() {
@@ -171,10 +195,6 @@ export class RuleFailure {
 
     public getFixes() {
         return this.fixes;
-    }
-
-    public getFixCount() {
-        return this.fixes.length;
     }
 
     public toJson(): any {

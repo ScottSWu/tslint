@@ -15,6 +15,9 @@
  * limitations under the License.
  */
 
+import * as colors from "colors";
+import * as diff from "diff";
+
 import {AbstractFormatter} from "../language/formatter/abstractFormatter";
 import {RuleFailure} from "../language/rule/rule";
 
@@ -27,7 +30,30 @@ export class Formatter extends AbstractFormatter {
             const lineAndCharacter = failure.getStartPosition().getLineAndCharacter();
             const positionTuple = `[${lineAndCharacter.line + 1}, ${lineAndCharacter.character + 1}]`;
 
-            return `${fileName}${positionTuple}: ${failureString}`;
+            const failureInfo = `${fileName}${positionTuple}: ${failureString}`;
+
+            const fixes = failure.getFixes();
+            if (fixes.length > 0) {
+                const content = failure.getSourceFile().getFullText();
+                const fixesString = fixes.map((fix) => {
+                    const description = fix.getDescription();
+                    const newContent = fix.apply(content);
+                    const diffResults = diff.diffLines(content, newContent);
+                    const diffString = diffResults.map(diff => {
+                        if (diff.added) {
+                            return colors.green(`    ${diff.value}`);
+                        } else if (diff.removed) {
+                            return colors.red(`    ${diff.value}`);
+                        } else {
+                            return "";
+                        }
+                    }).join("");
+                    return `- ${description}\n${diffString}`;
+                }).join("\n");
+                return `${failureInfo}\nSuggested fixes:\n${fixesString}`;
+            } else {
+                return failureInfo;
+            }
         });
 
         return outputLines.join("\n") + "\n";

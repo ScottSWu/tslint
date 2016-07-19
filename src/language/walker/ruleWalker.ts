@@ -18,7 +18,7 @@
 import * as ts from "typescript";
 
 import {IOptions} from "../../lint";
-import {IDisabledInterval, IFix, IReplacement, RuleFailure} from "../rule/rule";
+import {Fix, IDisabledInterval, IReplacement, RuleFailure} from "../rule/rule";
 import {doesIntersect} from "../utils";
 import {SyntaxWalker} from "./syntaxWalker";
 
@@ -69,7 +69,7 @@ export class RuleWalker extends SyntaxWalker {
         this.position += node.getFullWidth();
     }
 
-    public createFailure(start: number, width: number, failure: string, fixes: IFix[] = []): RuleFailure {
+    public createFailure(start: number, width: number, failure: string, fixes: Fix[] = []): RuleFailure {
         const from = (start > this.limit) ? this.limit : start;
         const to = ((start + width) > this.limit) ? this.limit : (start + width);
         return new RuleFailure(this.sourceFile, from, to, failure, this.ruleName, fixes);
@@ -82,12 +82,8 @@ export class RuleWalker extends SyntaxWalker {
         }
     }
 
-    public createFix(description: string, replacements: IReplacement[]): IFix {
-        return {
-            description: description,
-            replacements: replacements,
-            ruleName: this.ruleName,
-        };
+    public createFix(description: string, replacements: IReplacement[]): Fix {
+        return new Fix(this.ruleName, description, replacements);
     }
 
     public createReplacement(start: number, length: number, text: string): IReplacement {
