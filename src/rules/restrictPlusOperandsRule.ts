@@ -56,7 +56,7 @@ class RestrictPlusOperandsWalker extends Lint.ProgramAwareRuleWalker {
                 // suggest a fix
                 if (leftType === "number" && rightType === "string") {
                     let fixes = [this.createFix(
-                        "turn left operand into a string", "style",
+                        "turn left operand into a string",
                         [this.createReplacement(
                             node.left.getStart(),
                             node.left.getFullWidth(),
@@ -64,7 +64,7 @@ class RestrictPlusOperandsWalker extends Lint.ProgramAwareRuleWalker {
                     this.addFailure(this.createFailure(position, width, message, fixes));
                 } else if (leftType === "string" && rightType === "number") {
                     let fixes = [this.createFix(
-                        "turn right operand into a string", "style",
+                        "turn right operand into a string",
                         [this.createReplacement(
                             node.right.getStart(),
                             node.right.getFullWidth(),

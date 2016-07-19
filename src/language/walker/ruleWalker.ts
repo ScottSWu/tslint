@@ -18,7 +18,7 @@
 import * as ts from "typescript";
 
 import {IOptions} from "../../lint";
-import {IDisabledInterval, IFix, IReplacement, RuleFailure, RuleSeverity} from "../rule/rule";
+import {IDisabledInterval, IFix, IReplacement, RuleFailure} from "../rule/rule";
 import {doesIntersect} from "../utils";
 import {SyntaxWalker} from "./syntaxWalker";
 
@@ -82,12 +82,11 @@ export class RuleWalker extends SyntaxWalker {
         }
     }
 
-    public createFix(description: string, severity: RuleSeverity, replacements: IReplacement[]): IFix {
+    public createFix(description: string, replacements: IReplacement[]): IFix {
         return {
             description: description,
             replacements: replacements,
             ruleName: this.ruleName,
-            severity: severity,
         };
     }
 

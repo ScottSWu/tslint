@@ -71,8 +71,6 @@ export interface IRuleMetadata {
 
 export type RuleType = "functionality" | "maintainability" | "style" | "typescript";
 
-export type RuleSeverity = "" | "none" | "format" | "style" | "warning" | "error";
-
 export interface IOptions {
     ruleArguments?: any[];
     ruleName: string;
@@ -101,7 +99,6 @@ export interface IReplacement {
 export interface IFix {
     ruleName: string;
     description: string;
-    severity: RuleSeverity;
     replacements: IReplacement[];
 }
 
@@ -180,14 +177,11 @@ export class RuleFailure {
         return this.fixes.length;
     }
 
-    public hasSeverity(severities: string[]) {
-        return this.fixes.some(fix => severities.indexOf(fix.severity) >= 0);
-    }
-
     public toJson(): any {
         return {
             endPosition: this.endPosition.toJson(),
             failure: this.failure,
+            fixes: this.fixes,
             name: this.fileName,
             ruleName: this.ruleName,
             startPosition: this.startPosition.toJson(),
