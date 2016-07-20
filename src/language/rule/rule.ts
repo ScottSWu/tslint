@@ -155,6 +155,10 @@ export class RuleFailure {
         return this.failure;
     }
 
+    public getStatementsCount() {
+        return this.sourceFile.statements.length;
+    }
+
     public toJson(): any {
         return {
             endPosition: this.endPosition.toJson(),

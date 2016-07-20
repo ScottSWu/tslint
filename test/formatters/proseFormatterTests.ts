@@ -39,9 +39,9 @@ describe("Prose Formatter", () => {
         ];
 
         const expectedResult =
-            TEST_FILE + getPositionString(1, 1) + "first failure\n" +
-            TEST_FILE + getPositionString(2, 12) + "mid failure\n" +
-            TEST_FILE + getPositionString(9, 2) + "last failure\n";
+            TEST_FILE + getPositionString(1, 1) + "first failure 1\n" +
+            TEST_FILE + getPositionString(2, 12) + "mid failure 1\n" +
+            TEST_FILE + getPositionString(9, 2) + "last failure 1\n";
 
         const actualResult = formatter.format(failures);
         assert.equal(actualResult, expectedResult);

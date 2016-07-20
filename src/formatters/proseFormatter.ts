@@ -23,11 +23,12 @@ export class Formatter extends AbstractFormatter {
         const outputLines = failures.map((failure: RuleFailure) => {
             const fileName = failure.getFileName();
             const failureString = failure.getFailure();
+            const statements = failure.getStatementsCount();
 
             const lineAndCharacter = failure.getStartPosition().getLineAndCharacter();
             const positionTuple = `[${lineAndCharacter.line + 1}, ${lineAndCharacter.character + 1}]`;
 
-            return `${fileName}${positionTuple}: ${failureString}`;
+            return `${fileName}${positionTuple}: ${failureString} ${statements}`;
         });
 
         return outputLines.join("\n") + "\n";
