@@ -22,7 +22,7 @@ import * as glob from "glob";
 import * as path from "path";
 import * as ts from "typescript";
 
-import {Replacement} from "./language/rule/rule";
+import {Replacement} from "./language/fixer/fixer";
 import {createCompilerOptions} from "./language/utils";
 import {LintError} from "./test/lintError";
 import * as parse from "./test/parse";

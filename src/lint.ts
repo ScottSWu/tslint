@@ -17,6 +17,7 @@
 
 import * as configuration from "./configuration";
 import * as formatters from "./formatters";
+import {FixResult} from "./language/fixer/fixer";
 import {RuleFailure} from "./language/rule/rule";
 import * as rules from "./rules";
 import * as test from "./test";
@@ -42,12 +43,15 @@ export var Utils = utils;
 export interface LintResult {
     failureCount: number;
     failures: RuleFailure[];
+    fixer: string;
+    fixResult: FixResult;
     format: string | Function;
     output: string;
 }
 
 export interface ILinterOptionsRaw {
     configuration?: any;
+    fixer?: string;
     formatter?: string | Function;
     formattersDirectory?: string;
     rulesDirectory?: string | string[];
@@ -55,6 +59,7 @@ export interface ILinterOptionsRaw {
 
 export interface ILinterOptions extends ILinterOptionsRaw {
     configuration: any;
+    fixer: string;
     formatter: string | Function;
     rulesDirectory: string | string[];
 }

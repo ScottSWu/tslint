@@ -26,7 +26,9 @@ import {
     loadConfigurationFromPath,
 } from "./configuration";
 import { EnableDisableRulesWalker } from "./enableDisableRules";
+import { findFixer } from "./fixerLoader";
 import { findFormatter } from "./formatterLoader";
+import { IFixer } from "./language/fixer/fixer";
 import { IFormatter } from "./language/formatter/formatter";
 import { RuleFailure } from "./language/rule/rule";
 import { TypedRule } from "./language/rule/typedRule";
@@ -127,12 +129,25 @@ class Linter {
             throw new Error(`formatter '${this.options.formatter}' not found`);
         }
 
-        const output = formatter.format(failures);
+        let fixer: IFixer;
+
+        const Fixer = findFixer(this.options.fixer);
+        if (Fixer) {
+            fixer = new Fixer();
+        } else {
+            throw new Error(`fixer '${this.options.fixer}' not found`);
+        }
+
+        const formatterOutput = formatter.format(failures);
+        const fixResult = fixer.apply(this.fileName, this.source, failures);
+
         return {
             failureCount: failures.length,
             failures: failures,
+            fixResult: fixResult,
+            fixer: "",
             format: this.options.formatter,
-            output: output,
+            output: formatterOutput + fixResult.message,
         };
     }
 
@@ -145,10 +160,11 @@ class Linter {
             throw new Error("Unknown Linter options type: " + typeof options);
         }
 
-        let { configuration, formatter, formattersDirectory, rulesDirectory } = options;
+        let { configuration, fixer, formatter, formattersDirectory, rulesDirectory } = options;
 
         return {
             configuration: configuration || DEFAULT_CONFIG,
+            fixer: fixer || "none",
             formatter: formatter || "prose",
             formattersDirectory: formattersDirectory,
             rulesDirectory: arrayify(rulesDirectory).concat(arrayify(configuration.rulesDirectory)),
