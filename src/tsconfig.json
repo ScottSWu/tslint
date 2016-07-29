@@ -73,6 +73,7 @@
         "rules/alignRule.ts",
         "rules/arrowParensRule.ts",
         "rules/banRule.ts",
+        "rules/checkReturnValueRule.ts",
         "rules/classNameRule.ts",
         "rules/commentFormatRule.ts",
         "rules/curlyRule.ts",

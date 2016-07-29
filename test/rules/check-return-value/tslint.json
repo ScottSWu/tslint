@@ -1,0 +1,8 @@
+{
+  "linterOptions": {
+    "typeCheck": true
+  },
+  "rules": {
+    "check-return-value": [true, ["configObj", "configFn"]]
+  }
+}

@@ -1,0 +1,44 @@
+let x = " hello world  ";
+
+x.trim();
+~~~~~~~~  [return value is unused]
+function foo(s: string = x.trim()) {
+    console.log(s);
+}
+if (x.trim()) {
+    foo(x);
+}
+
+x.replace("h", "y");
+~~~~~~~~~~~~~~~~~~~  [return value is unused]
+x = x.replace("h", "y");
+
+console.log(x.trim())
+x.split("l");
+~~~~~~~~~~~~  [return value is unused]
+for (const part of x.split("l")) {
+    console.log(part.length);
+}
+
+
+let y = [1, 2, 3, 4];
+
+y.filter(e => e > 3);
+~~~~~~~~~~~~~~~~~~~~  [return value is unused]
+y.filter(e => e % 2 === 0).length;
+
+let configObj = {
+    configFn: () => {
+        return 1;
+    },
+
+    configFn: () => {
+        return 2;
+    }
+}
+
+configObj.configFn();
+~~~~~~~~~~~~~~~~~~~~  [return value is unused]
+while (configObj.configFn() !== 1) {
+    configObj.otherFn();
+}
