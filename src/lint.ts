@@ -24,6 +24,7 @@ import * as test from "./test";
 import * as linter from "./tslint";
 import * as utils from "./utils";
 
+export * from "./language/fixer/fixer";
 export * from "./language/rule/rule";
 export * from "./enableDisableRules";
 export * from "./formatterLoader";

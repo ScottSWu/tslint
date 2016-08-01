@@ -12,29 +12,24 @@ export class Fixer extends AbstractFixer {
         const outputLines = failures.map(failure => {
             const proseOutput = proseFormatter.format([failure]);
 
-            const fixes = failure.getFixes();
-            const fixLines = fixes.map((fix, index) => {
-                const newSource = fix.apply(source);
-                const diffResults = diff.diffLines(source, newSource);
+            const newSource = failure.getFix().apply(source);
+            const diffResults = diff.diffLines(source, newSource);
 
-                let lineOffset = 1;
-                const diffLines = diffResults.map(diffResult => {
-                    let output = "";
-                    if (diffResult.added) {
-                        output += `Line ${lineOffset}:${colors.green(diffResult.value)}`;
-                    } else if (diffResult.removed) {
-                        output += `Line ${lineOffset}:${colors.red(diffResult.value)}`;
-                    }
-                    if (!diffResult.added) {
-                        lineOffset += diffResult.value.match(/\n/g).length;
-                    }
-                    return output;
-                });
-
-                return `#${index + 1}: ${fix.getDescription()}\n${diffLines.join("")}`;
+            let lineOffset = 1;
+            const diffLines = diffResults.map(diffResult => {
+                let output = "";
+                if (diffResult.added) {
+                    output += `Line ${lineOffset}:${colors.green(diffResult.value)}`;
+                } else if (diffResult.removed) {
+                    output += `Line ${lineOffset}:${colors.red(diffResult.value)}`;
+                }
+                if (!diffResult.added) {
+                    lineOffset += diffResult.value.match(/\n/g).length;
+                }
+                return output;
             });
 
-            return `${proseOutput}Suggested fixes:\n${fixLines.join("")}`;
+            return `${proseOutput}Suggested fixes:\n${diffLines.join("")}`;
         });
         return {
             fileName: fileName,

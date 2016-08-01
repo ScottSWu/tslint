@@ -120,13 +120,12 @@ export function runTest(testDirectory: string, rulesDirectory?: string | string[
                 // accumulate replacements
                 let replacements: Replacement[] = [];
                 for (const failure of failures) {
-                    const fixes = failure.getFixes();
-                    if (fixes.length > 0) {
-                        replacements = replacements.concat(fixes[0].getReplacements());
+                    if (failure.hasFix()) {
+                        replacements = replacements.concat(failure.getFix().replacements);
                     }
                 }
                 // sort in reverse so that diffs are properly applied
-                replacements.sort((a, b) => b.getEnd() - a.getEnd());
+                replacements.sort(Replacement.compare);
                 newFileText = replacements.reduce((text, r) => r.apply(text), fileTextWithoutMarkup);
             }
         } catch (e) {

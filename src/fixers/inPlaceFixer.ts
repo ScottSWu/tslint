@@ -3,12 +3,10 @@ import {Fix, FixResult, Replacement} from "../language/fixer/fixer";
 import {RuleFailure} from "../language/rule/rule";
 
 export class Fixer extends AbstractFixer {
-    private isConflicting(a: Fix, b: Fix) {
-        const aReps = a.getReplacements();
-        const bReps = b.getReplacements();
-        aReps.forEach(aRep => {
-            bReps.forEach(bRep => {
-                if (aRep.getEnd() > bRep.getStart() && aRep.getStart() < bRep.getEnd()) {
+    private static isConflicting(a: Fix, b: Fix) {
+        a.replacements.forEach(aRep => {
+            b.replacements.forEach(bRep => {
+                if (aRep.end > bRep.start && aRep.start < bRep.end) {
                     return true;
                 }
             });
@@ -20,15 +18,15 @@ export class Fixer extends AbstractFixer {
         // Take the first suggested fix in all rule failures
         const fixes: Fix[] = [];
         failures.forEach(failure => {
-            if (failure.getFixes().length > 0) {
-                fixes.push(failure.getFixes()[0]);
+            if (failure.hasFix()) {
+                fixes.push(failure.getFix());
             }
         });
         // Select fixes FCFS, removing conflicting fixes
         const selectedFixes: Fix[] = [];
         const remainingFixes: Fix[] = [];
         fixes.forEach(fix => {
-            if (!selectedFixes.some(sf => this.isConflicting(fix, sf))) {
+            if (!selectedFixes.some(sf => Fixer.isConflicting(fix, sf))) {
                 selectedFixes.push(fix);
             } else {
                 remainingFixes.push(fix);
@@ -39,9 +37,9 @@ export class Fixer extends AbstractFixer {
         // replacements are made at the same place (e.g. multiple imports).
         let replacements: Replacement[] = [];
         for (const fix of selectedFixes) {
-            replacements = replacements.concat(fix.getReplacements());
+            replacements = replacements.concat(fix.replacements);
         }
-        replacements.sort((a, b) => b.getEnd() - a.getEnd());
+        replacements.sort(Replacement.compare);
 
         const newSource = replacements.reduce((acc, r) => r.apply(acc), source);
 

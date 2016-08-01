@@ -1,23 +1,34 @@
 import {RuleFailure} from "../rule/rule";
 
 export class Replacement {
-    constructor(private start: number, private length: number, private text: string) {
+    public static compare(a: Replacement, b: Replacement) {
+        if (a.end === b.end) {
+            return b.priority - a.priority;
+        }
+        return b.end - a.end;
     }
 
-    public getStart() {
-        return this.start;
+    constructor(private innerStart: number, private innerLength: number, private innerText: string, private innerPriority: number = 0) {
     }
 
-    public getLength() {
-        return this.length;
+    get start() {
+        return this.innerStart;
     }
 
-    public getEnd() {
-        return this.start + this.length;
+    get length() {
+        return this.innerLength;
     }
 
-    public getText() {
-        return this.text;
+    get end() {
+        return this.innerStart + this.innerLength;
+    }
+
+    get priority() {
+        return this.innerPriority;
+    }
+
+    get text() {
+        return this.innerText;
     }
 
     public apply(content: string) {
@@ -26,25 +37,32 @@ export class Replacement {
 }
 
 export class Fix {
-    constructor(private ruleName: string, private description: string, private replacements: Replacement[]) {
+    public static applyAll(content: string, fixes: Fix[]) {
+        // accumulate replacements
+        let replacements: Replacement[] = [];
+        for (const fix of fixes) {
+            replacements = replacements.concat(fix.replacements);
+        }
+        // sort in reverse so that diffs are properly applied
+        replacements.sort(Replacement.compare);
+        return replacements.reduce((text, r) => r.apply(text), content);
     }
 
-    public getRuleName() {
-        return this.ruleName;
+    constructor(private innerRuleName: string, private innerReplacements: Replacement[]) {
     }
 
-    public getDescription() {
-        return this.description;
+    get ruleName() {
+        return this.innerRuleName;
     }
 
-    public getReplacements() {
-        return this.replacements;
+    get replacements() {
+        return this.innerReplacements;
     }
 
     public apply(content: string) {
         // sort replacements in reverse so that diffs are properly applied
-        this.replacements.sort((a, b) => b.getEnd() - a.getEnd());
-        return this.replacements.reduce((text, r) => r.apply(text), content);
+        this.innerReplacements.sort(Replacement.compare);
+        return this.innerReplacements.reduce((text, r) => r.apply(text), content);
     }
 }
 
