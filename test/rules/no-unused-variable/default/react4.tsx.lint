@@ -1,4 +1,5 @@
 import * as React from "react";
+~nil                            [remove imports]
             ~~~~~               [Unused import: 'React']
 
 console.log(<input type="text" />);

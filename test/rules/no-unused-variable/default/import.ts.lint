@@ -1,12 +1,16 @@
 import  $ = require("jquery");
+~nil                           [remove imports]
 import  _ = require("underscore");
 import  xyz = require("xyz");
         ~~~                   [Unused import: 'xyz']
 import {createReadStream, createWriteStream} from "fs";
         ~~~~~~~~~~~~~~~~                                [Unused import: 'createReadStream']
+import { dirname, extname } from "path";
+                  ~~~~~~~                [Unused import: 'extname']
 export import a = require("a");
 
 createWriteStream();
+dirname();
 
 $(_.xyz());
 
@@ -21,11 +25,29 @@ import * as foo from "libA";
             ~~~              [Unused import: 'foo']
 import * as bar from "libB";
 import baz from "libC";
-import defaultExport, { namedExport } from "libD";
-       ~~~~~~~~~~~~~                               [Unused import: 'defaultExport']
+import defaultExportA, { namedExportA } from "libD";
+       ~~~~~~~~~~~~~~                                [Unused import: 'defaultExportA']
+import defaultExportB, {namedExportB} from "libE";
+                        ~~~~~~~~~~~~               [Unused import: 'namedExportB']
 
 bar.someFunc();
 baz();
-namedExport();
+namedExportA();
+defaultExportB();
 
 import "jquery";
+
+import {fooF, barF, bazF} from "libF";
+        ~~~~                           [Unused import: 'fooF']
+                    ~~~~               [Unused import: 'bazF']
+barF();
+
+import {fooG,barG,bazG} from "libG";
+        ~~~~                         [Unused import: 'fooG']
+barG();
+bazG();
+
+import { fooH, barH, bazH } from "libG";
+               ~~~~                      [Unused import: 'barH']
+fooH();
+bazH();

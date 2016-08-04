@@ -91,6 +91,9 @@ class NoUnusedVariablesWalker extends Lint.RuleWalker {
     private isReactUsed: boolean;
     private reactImport: ts.NamespaceImport;
 
+    private unusedImports: { clause: ts.ImportClause, specifiers: ts.Node[] }[];
+    private unusedImportEquals: ts.ImportEqualsDeclaration[];
+
     constructor(sourceFile: ts.SourceFile, options: Lint.IOptions, private languageService: ts.LanguageService) {
         super(sourceFile, options);
         this.skipVariableDeclaration = false;
@@ -104,6 +107,9 @@ class NoUnusedVariablesWalker extends Lint.RuleWalker {
         if (ignorePatternOption != null) {
             this.ignorePattern = new RegExp(ignorePatternOption["ignore-pattern"]);
         }
+
+        this.unusedImports = [];
+        this.unusedImportEquals = [];
     }
 
     public visitSourceFile(node: ts.SourceFile) {
@@ -135,8 +141,53 @@ class NoUnusedVariablesWalker extends Lint.RuleWalker {
             if (!this.isIgnored(nameText)) {
                 const start = this.reactImport.name.getStart();
                 const msg = Rule.FAILURE_STRING_FACTORY(Rule.FAILURE_TYPE_IMPORT, nameText);
+                // TODO this.unusedImports.push(this.reactImport.parent.parent);
                 this.addFailure(this.createFailure(start, nameText.length, msg));
             }
+        }
+
+        const replacements: Lint.Replacement[] = [];
+
+        // Remove any unused named imports
+        this.unusedImports.forEach(declaration => {
+            // Try deleting all unused specifiers
+            const clause = declaration.clause;
+            const specifiers = declaration.specifiers;
+            const content = clause.getFullText();
+
+            const tmpReplacements: Lint.Replacement[] = specifiers.map(specifier =>
+                this.createReplacement(specifier.getFullStart() - clause.getFullStart(), specifier.getFullWidth(), ""));
+            let newContent = Lint.Replacement.applyAll(content, tmpReplacements);
+            // Remove excess whitespace
+            newContent = newContent.trim();
+            // Consolidate commas, retaining whitespace
+            newContent = newContent.replace(/(\s*)[\s,]*,(\s*)/, "$1,$2");
+            // Remove leading commas (e.g. after removing the first specifier)
+            newContent = newContent.replace(/^[\s,]*/, "");
+            // Remove leading commas in named imports, retaining whitespace
+            newContent = newContent.replace(/(\{\s*)[\s,]*/, "$1");
+            // Remove trailing commas in named imports, retaining whitespace
+            newContent = newContent.replace(/[\s,]*?(\s*\})/, "$1");
+            // Remove empty braces
+            newContent = newContent.replace(/\{[\s]*\}/, "");
+            // Remove trailing commas
+            newContent = newContent.replace(/[\s,]*$/, "");
+
+            if (newContent.length > 0) {
+                replacements.push(this.replaceNode(clause, newContent));
+            } else {
+                replacements.push(this.deleteNode(clause.parent));
+            }
+        });
+
+        // Remove unused import equals declarations
+        this.unusedImportEquals.forEach(declaration => {
+            replacements.push(this.deleteNode(declaration));
+        });
+
+        if (replacements.length > 0) {
+            this.addFailure(this.createFailure(0, 0, "remove imports",
+                new Lint.Fix(Rule.metadata.ruleName, replacements)));
         }
     }
 
@@ -181,7 +232,9 @@ class NoUnusedVariablesWalker extends Lint.RuleWalker {
             // importClause will be null for bare imports
             if (importClause != null && importClause.name != null) {
                 const variableIdentifier = importClause.name;
-                this.validateReferencesForVariable(Rule.FAILURE_TYPE_IMPORT, variableIdentifier.text, variableIdentifier.getStart());
+                if (!this.validateReferencesForVariable(Rule.FAILURE_TYPE_IMPORT, variableIdentifier.text, variableIdentifier.getStart())) {
+                    this.addUnusedImport(importClause, variableIdentifier);
+                }
             }
         }
 
@@ -191,7 +244,9 @@ class NoUnusedVariablesWalker extends Lint.RuleWalker {
     public visitImportEqualsDeclaration(node: ts.ImportEqualsDeclaration) {
         if (!Lint.hasModifier(node.modifiers, ts.SyntaxKind.ExportKeyword)) {
             const name = node.name;
-            this.validateReferencesForVariable(Rule.FAILURE_TYPE_IMPORT, name.text, name.getStart());
+            if (!this.validateReferencesForVariable(Rule.FAILURE_TYPE_IMPORT, name.text, name.getStart())) {
+                this.unusedImportEquals.push(node);
+            }
         }
         super.visitImportEqualsDeclaration(node);
     }
@@ -240,13 +295,18 @@ class NoUnusedVariablesWalker extends Lint.RuleWalker {
     }
 
     public visitNamedImports(node: ts.NamedImports) {
+        const clause = node.parent as ts.ImportClause;
         for (const namedImport of node.elements) {
-            this.validateReferencesForVariable(Rule.FAILURE_TYPE_IMPORT, namedImport.name.text, namedImport.name.getStart());
+            if (!this.validateReferencesForVariable(Rule.FAILURE_TYPE_IMPORT, namedImport.name.text, namedImport.name.getStart())) {
+                this.addUnusedImport(clause, namedImport);
+            }
         }
+
         super.visitNamedImports(node);
     }
 
     public visitNamespaceImport(node: ts.NamespaceImport) {
+        const clause = node.parent as ts.ImportClause;
         const importDeclaration = <ts.ImportDeclaration> node.parent.parent;
         const moduleSpecifier = importDeclaration.moduleSpecifier.getText();
 
@@ -263,7 +323,9 @@ class NoUnusedVariablesWalker extends Lint.RuleWalker {
                 this.isReactUsed = true;
             }
         } else {
-            this.validateReferencesForVariable(Rule.FAILURE_TYPE_IMPORT, node.name.text, node.name.getStart());
+            if (!this.validateReferencesForVariable(Rule.FAILURE_TYPE_IMPORT, node.name.text, node.name.getStart(), node.name)) {
+                this.addUnusedImport(clause, node);
+            }
         }
         super.visitNamespaceImport(node);
     }
@@ -332,12 +394,25 @@ class NoUnusedVariablesWalker extends Lint.RuleWalker {
         this.skipVariableDeclaration = false;
     }
 
-    private validateReferencesForVariable(type: string, name: string, position: number) {
+    private validateReferencesForVariable(type: string, name: string, position: number, node?: ts.Node): boolean {
         const fileName = this.getSourceFile().fileName;
         const highlights = this.languageService.getDocumentHighlights(fileName, position, [fileName]);
         if ((highlights == null || highlights[0].highlightSpans.length <= 1) && !this.isIgnored(name)) {
             this.addFailure(this.createFailure(position, name.length, Rule.FAILURE_STRING_FACTORY(type, name)));
+            return false;
         }
+        return true;
+    }
+
+    private addUnusedImport(clause: ts.ImportClause, specifier: ts.Node) {
+        // Batch together unused imports in the same clause
+        for (const unusedImport of this.unusedImports) {
+            if (unusedImport.clause === clause) {
+                unusedImport.specifiers.push(specifier);
+                return;
+            }
+        }
+        this.unusedImports.push({ clause: clause, specifiers: [specifier] });
     }
 
     private isIgnored(name: string) {

@@ -94,6 +94,14 @@ export class RuleWalker extends SyntaxWalker {
         return this.createReplacement(start, length, "");
     }
 
+    public deleteNode(node: ts.Node): Replacement {
+        return this.createReplacement(node.getFullStart(), node.getFullWidth(), "");
+    }
+
+    public replaceNode(node: ts.Node, text: string): Replacement {
+        return this.createReplacement(node.getStart(), node.getWidth(), text);
+    }
+
     private existsFailure(failure: RuleFailure) {
         return this.failures.some((f) => f.equals(failure));
     }

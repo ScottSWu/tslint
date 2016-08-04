@@ -178,8 +178,10 @@ function displayDiffResults(diffResults: diff.IDiffResult[], extension: string) 
         let color = colors.grey;
         if (diffResult.added) {
             color = colors.green;
+            console.log("added");
         } else if (diffResult.removed) {
             color = colors.red;
+            console.log("removed");
         }
         process.stdout.write(color(diffResult.value));
     }
