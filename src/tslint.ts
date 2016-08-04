@@ -149,10 +149,11 @@ class Linter {
             throw new Error("Unknown Linter options type: " + typeof options);
         }
 
-        let { configuration, formatter, formattersDirectory, rulesDirectory } = options;
+        let { configuration, fix, formatter, formattersDirectory, rulesDirectory } = options;
 
         return {
             configuration: configuration || DEFAULT_CONFIG,
+            fix: fix || false,
             formatter: formatter || "prose",
             formattersDirectory: formattersDirectory,
             rulesDirectory: arrayify(rulesDirectory).concat(arrayify(configuration.rulesDirectory)),

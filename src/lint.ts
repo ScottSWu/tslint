@@ -48,6 +48,7 @@ export interface LintResult {
 
 export interface ILinterOptionsRaw {
     configuration?: any;
+    fix?: boolean;
     formatter?: string | Function;
     formattersDirectory?: string;
     rulesDirectory?: string | string[];
@@ -55,6 +56,7 @@ export interface ILinterOptionsRaw {
 
 export interface ILinterOptions extends ILinterOptionsRaw {
     configuration: any;
+    fix: boolean;
     formatter: string | Function;
     rulesDirectory: string | string[];
 }

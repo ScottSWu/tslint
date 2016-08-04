@@ -87,6 +87,11 @@ let processed = optimist
         },
         "type-check": {
             describe: "enable type checking when linting a project",
+            type: "boolean",
+        },
+        "fix": {
+            describe: "apply suggested fixes from lint failures",
+            type: "boolean",
         },
         "v": {
             alias: "version",
@@ -197,9 +202,12 @@ tslint accepts the following commandline options:
         The location of a tsconfig.json file that will be used to determine which
         files will be linted.
 
-    --type-check
+    --type-check:
         Enables the type checker when running linting rules. --project must be
         specified in order to enable type checking.
+
+    --fix:
+        Fixes suggested by rule failures will be automatically applied.
 
     -v, --version:
         The current version of tslint.
@@ -244,6 +252,7 @@ const processFile = (file: string, program?: ts.Program) => {
 
     const linter = new Linter(file, contents, {
         configuration,
+        fix: argv.fix,
         formatter: argv.t,
         formattersDirectory: argv.s,
         rulesDirectory: argv.r,
