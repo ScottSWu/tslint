@@ -90,13 +90,20 @@ export interface IRule {
 }
 
 export class Replacement {
+    public static compare(a: Replacement, b: Replacement) {
+        if (a.end === b.end) {
+            return b.priority - a.priority;
+        }
+        return b.end - a.end;
+    }
+
     public static applyAll(content: string, replacements: Replacement[]) {
         // sort in reverse so that diffs are properly applied
         replacements.sort((a, b) => b.end - a.end);
         return replacements.reduce((text, r) => r.apply(text), content);
     }
 
-    constructor(private innerStart: number, private innerLength: number, private innerText: string) {
+    constructor(private innerStart: number, private innerLength: number, private innerText: string, private innerPriority: number = 0) {
     }
 
     get start() {
@@ -115,8 +122,21 @@ export class Replacement {
         return this.innerText;
     }
 
+    get priority() {
+        return this.innerPriority;
+    }
+
     public apply(content: string) {
         return content.substring(0, this.start) + this.text + content.substring(this.start + this.length);
+    }
+
+    public toJson(): any {
+        return {
+            length: this.innerLength,
+            priority: this.innerPriority,
+            start: this.innerStart,
+            text: this.innerText,
+        };
     }
 }
 
@@ -143,6 +163,24 @@ export class Fix {
 
     public apply(content: string) {
         return Replacement.applyAll(content, this.innerReplacements);
+    }
+
+    public conflictsWith(other: Fix) {
+        for (const thisRep of this.innerReplacements) {
+            for (const otherRep of other.replacements) {
+                if (thisRep.end > otherRep.start && thisRep.start < otherRep.end) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public toJson(): any {
+        return {
+            ruleName: this.innerRuleName,
+            replacements: this.innerReplacements.map(r => r.toJson()),
+        };
     }
 }
 
@@ -180,6 +218,7 @@ export class RuleFailure {
     private fileName: string;
     private startPosition: RuleFailurePosition;
     private endPosition: RuleFailurePosition;
+    private appliedFix: boolean = false;
 
     constructor(private sourceFile: ts.SourceFile,
                 start: number,
@@ -221,11 +260,19 @@ export class RuleFailure {
         return this.fix;
     }
 
+    public setAppliedFix(applied: boolean) {
+        this.appliedFix = applied;
+    }
+
+    public hasAppliedFix() {
+        return this.appliedFix;
+    }
+
     public toJson(): any {
         return {
             endPosition: this.endPosition.toJson(),
             failure: this.failure,
-            fix: this.fix,
+            fix: this.fix.toJson(),
             name: this.fileName,
             ruleName: this.ruleName,
             startPosition: this.startPosition.toJson(),
