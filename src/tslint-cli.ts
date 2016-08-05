@@ -260,6 +260,10 @@ const processFile = (file: string, program?: ts.Program) => {
 
     const lintResult = linter.lint();
 
+    if (argv.fix) {
+        fs.writeFileSync(file, lintResult.fixResult, "utf8");
+    }
+
     if (lintResult.failureCount > 0) {
         outputStream.write(lintResult.output, () => {
             process.exit(argv.force ? 0 : 2);

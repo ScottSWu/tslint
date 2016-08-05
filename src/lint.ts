@@ -42,6 +42,7 @@ export var Utils = utils;
 export interface LintResult {
     failureCount: number;
     failures: RuleFailure[];
+    fixResult: string;
     format: string | Function;
     output: string;
 }

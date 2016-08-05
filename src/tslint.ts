@@ -28,7 +28,7 @@ import {
 import { EnableDisableRulesWalker } from "./enableDisableRules";
 import { findFormatter } from "./formatterLoader";
 import { IFormatter } from "./language/formatter/formatter";
-import { RuleFailure } from "./language/rule/rule";
+import { Fix, RuleFailure } from "./language/rule/rule";
 import { TypedRule } from "./language/rule/typedRule";
 import { getSourceFile } from "./language/utils";
 import { ILinterOptions, ILinterOptionsRaw, LintResult } from "./lint";
@@ -121,6 +121,21 @@ class Linter {
             }
         }
 
+        let fixedSource = this.source;
+        if (this.options.fix) {
+            // Select fixes first come first serve, removing conflicting fixes
+            const selectedFixes: Fix[] = [];
+            failures.filter(f => f.hasFix()).forEach(failure => {
+                const fix = failure.getFix();
+                if (!selectedFixes.some(sf => fix.conflictsWith(sf))) {
+                    selectedFixes.push(fix);
+                    failure.setAppliedFix(true);
+                }
+            });
+
+            fixedSource = Fix.applyAll(this.source, selectedFixes);
+        }
+
         let formatter: IFormatter;
         const formattersDirectory = getRelativePath(this.options.formattersDirectory);
 
@@ -135,6 +150,7 @@ class Linter {
         return {
             failureCount: failures.length,
             failures: failures,
+            fixResult: fixedSource,
             format: this.options.formatter,
             output: output,
         };
