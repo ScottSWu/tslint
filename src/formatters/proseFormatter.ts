@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import * as diff from "diff";
+
 import {AbstractFormatter} from "../language/formatter/abstractFormatter";
 import {RuleFailure} from "../language/rule/rule";
 
@@ -27,7 +29,19 @@ export class Formatter extends AbstractFormatter {
             const lineAndCharacter = failure.getStartPosition().getLineAndCharacter();
             const positionTuple = `[${lineAndCharacter.line + 1}, ${lineAndCharacter.character + 1}]`;
 
-            return `${fileName}${positionTuple}: ${failureString}`;
+            let fixString = "";
+            if (failure.hasFix() && !failure.hasAppliedFix()) {
+                const fix = failure.getFix();
+                const newSource = fix.apply(this.source);
+                const diffResults = diff.structuredPatch(fileName, fileName, this.source, newSource,
+                    "original", "fixes", { context: 0 });
+                const diffString = diffResults.hunks.map(hunk => {
+                    return `Line ${hunk.oldStart} (- original, + suggested fix)\n${hunk.lines.join("\n")}`;
+                }).join("\n");
+                fixString = `\n${diffString}`;
+            }
+
+            return `${fileName}${positionTuple}: ${failureString}${fixString}`;
         });
 
         return outputLines.join("\n") + "\n";

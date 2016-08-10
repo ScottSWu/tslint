@@ -37,7 +37,8 @@ describe("JSON Formatter", () => {
             new RuleFailure(sourceFile, maxPosition - 1, maxPosition, "last failure", "last-name"),
             new RuleFailure(sourceFile, 0, maxPosition, "full failure", "full-name",
                 new Fix("full-name", [
-                    new Replacement(0, 0, ""),
+                    new Replacement(0, 0, "/*", -1),
+                    new Replacement(maxPosition, 0, "*/", 1),
                 ])),
         ];
 
@@ -76,14 +77,21 @@ describe("JSON Formatter", () => {
             name: TEST_FILE,
             failure: "full failure",
             fix: {
-                innerReplacements: [
+                replacements: [
                     {
-                        innerLength: 0,
-                        innerStart: 0,
-                        innerText: "",
+                        length: 0,
+                        priority: -1,
+                        start: 0,
+                        text: "/*",
+                    },
+                    {
+                        length: 0,
+                        priority: 1,
+                        start: maxPosition,
+                        text: "*/",
                     },
                 ],
-                innerRuleName: "full-name",
+                ruleName: "full-name",
             },
             startPosition: {
                 position: 0,

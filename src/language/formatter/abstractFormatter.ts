@@ -19,5 +19,8 @@ import {RuleFailure} from "../rule/rule";
 import {IFormatter} from "./formatter";
 
 export abstract class AbstractFormatter implements IFormatter {
+    constructor(protected source: string) {
+    }
+
     public abstract format(failures: RuleFailure[]): string;
 }

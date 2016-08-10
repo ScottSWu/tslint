@@ -141,7 +141,7 @@ class Linter {
 
         const Formatter = findFormatter(this.options.formatter, formattersDirectory);
         if (Formatter) {
-            formatter = new Formatter();
+            formatter = new Formatter(this.source);
         } else {
             throw new Error(`formatter '${this.options.formatter}' not found`);
         }

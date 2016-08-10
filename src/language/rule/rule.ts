@@ -178,8 +178,8 @@ export class Fix {
 
     public toJson(): any {
         return {
-            ruleName: this.innerRuleName,
             replacements: this.innerReplacements.map(r => r.toJson()),
+            ruleName: this.innerRuleName,
         };
     }
 }
@@ -272,7 +272,7 @@ export class RuleFailure {
         return {
             endPosition: this.endPosition.toJson(),
             failure: this.failure,
-            fix: this.fix.toJson(),
+            fix: this.hasFix() ? this.fix.toJson() : undefined,
             name: this.fileName,
             ruleName: this.ruleName,
             startPosition: this.startPosition.toJson(),
