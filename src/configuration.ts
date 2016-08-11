@@ -26,6 +26,7 @@ export interface IConfigurationFile {
     extends?: string | string[];
     linterOptions?: {
         typeCheck?: boolean,
+        force?: boolean,
     };
     rulesDirectory?: string | string[];
     rules?: any;

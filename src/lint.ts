@@ -54,7 +54,7 @@ export interface ILinterOptionsRaw {
 }
 
 export interface ILinterOptions extends ILinterOptionsRaw {
-    configuration: any;
+    configuration: configuration.IConfigurationFile;
     formatter: string | Function;
     rulesDirectory: string | string[];
 }

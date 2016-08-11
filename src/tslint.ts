@@ -105,8 +105,12 @@ class Linter {
         const enabledRules = configuredRules.filter((r) => r.isEnabled());
         for (let rule of enabledRules) {
             let ruleFailures: RuleFailure[] = [];
-            if (this.program && rule instanceof TypedRule) {
-                ruleFailures = rule.applyWithProgram(sourceFile, this.program);
+            if (rule instanceof TypedRule) {
+                if (this.program) {
+                    ruleFailures = rule.applyWithProgram(sourceFile, this.program);
+                } else if (!this.options.configuration.suppressSomething) {
+                    throw new Error(`${rule.getOptions().ruleName} requires type checking`);
+                }
             } else {
                 ruleFailures = rule.apply(sourceFile);
             }
