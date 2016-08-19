@@ -8,90 +8,92 @@ export class Rule extends Lint.Rules.TypedRule {
         ruleName: "check-return-value",
         description: "Enforces the return value of certain functions to be used.",
         rationale: Lint.Utils.dedent`
-            Certain functions do not change the state of the calling object. If these
-            functions' return values are unused, then the function call could be removed
-            without any effects, indicating a possible bug.`,
+            Certain functions do not change the state of the calling object. If
+            these functions' return values are unused, then the function call
+            could be removed without any effects, indicating a possible bug.`,
         optionsDescription: Lint.Utils.dedent`
             A list of functions whose return values cannot be thrown away in
-            form of ['function'], ['object name', 'function'] or ['type', 'function']. Use
-            ['no-built-ins'] to unblacklist a built-in list of common functions.`,
+            form of ['function'], ['object name', 'function'] or ['type',
+            'function'].`,
         options: {
             type: "list",
             listType: {
                 type: "array",
             },
         },
-        optionExamples: [`[true, ["no-built-ins"], ["string", "trim"], ["fn"], ["type", "fn"], ["obj", "fn"]]`],
+        optionExamples: [`[true, ["Array", "join"], ["fn"], ["type", "fn"], ["obj", "fn"]]`],
         type: "functionality",
     };
     /* tslint:enable:object-literal-sort-keys */
 
     public static FUNCTION_FAILURE_STRING = "return value is unused";
-    public static CONSTRUCTOR_FAILURE_STRING = "constructed object is unused";
 
     public applyWithProgram(sourceFile: ts.SourceFile, program: ts.Program): Lint.RuleFailure[] {
         return this.applyWithWalker(new CheckReturnValueWalker(sourceFile, this.getOptions(), program));
     }
 }
 
+const BUILTIN_BLACKLIST: string[][] = [
+    ["Array", "concat"],
+    ["Array", "filter"],
+    ["Array", "map"],
+    ["Array", "slice"],
+    ["Function", "bind"],
+    ["Object", "create"],
+    ["string", "concat"],
+    ["string", "normalize"],
+    ["string", "padStart"],
+    ["string", "padEnd"],
+    ["string", "repeat"],
+    ["string", "replace"],
+    ["string", "slice"],
+    ["string", "split"],
+    ["string", "substr"],
+    ["string", "substring"],
+    ["string", "toLocaleLowerCase"],
+    ["string", "toLocaleUpperCase"],
+    ["string", "toLowerCase"],
+    ["string", "toUpperCase"],
+    ["string", "trim"],
+];
+
+type AccessExpression = ts.PropertyAccessExpression | ts.ElementAccessExpression;
+
 class CheckReturnValueWalker extends Lint.ProgramAwareRuleWalker {
-    protected static builtins = [
-        ["Array", "concat"],
-        ["Array", "filter"],
-        ["Array", "map"],
-        ["Array", "slice"],
-        ["Function", "bind"],
-        ["Object", "create"],
-        ["string", "concat"],
-        ["string", "normalize"],
-        ["string", "padStart"],
-        ["string", "padEnd"],
-        ["string", "repeat"],
-        ["string", "replace"],
-        ["string", "slice"],
-        ["string", "split"],
-        ["string", "substr"],
-        ["string", "substring"],
-        ["string", "toLocaleLowerCase"],
-        ["string", "toLocaleUpperCase"],
-        ["string", "toLowerCase"],
-        ["string", "toUpperCase"],
-        ["string", "trim"],
-    ];
     // Single function name blacklist
-    protected nameBlacklist: string[] = [];
+    protected nameBlacklist: {[key: string]: boolean} = {};
     // Property function name / type blacklist
-    protected propertyBlacklist: string[][] = [];
+    protected propertyBlacklist: {[key: string]: boolean} = {};
 
     constructor(sourceFile: ts.SourceFile, options: Lint.IOptions, program: ts.Program) {
         super(sourceFile, options, program);
 
-        let addBuiltins = true;
-
         // Populate blacklists with builtin functions and rule arguments
-        options.ruleArguments.forEach(arg => {
-            if (arg.length === 1) {
-                if (arg[0] === "no-built-ins") {
-                    addBuiltins = false;
+        if (options.ruleArguments) {
+            options.ruleArguments.forEach(arg => {
+                if (arg.length === 1) {
+                    this.nameBlacklist[arg[0]] = true;
                 } else {
-                    this.nameBlacklist.push(arg[0]);
+                    // Since type / variable names must be proper identifiers, we can
+                    // assume they do not contain pound signs.
+                    this.propertyBlacklist[arg.join("#")] = true;
                 }
-            } else {
-                this.propertyBlacklist.push(arg);
-            }
-        });
-        if (addBuiltins) {
-            this.propertyBlacklist = this.propertyBlacklist.concat(CheckReturnValueWalker.builtins);
+            });
         }
+
+        BUILTIN_BLACKLIST.forEach(property => {
+            this.propertyBlacklist[property.join("#")] = true;
+        });
     }
 
     public visitCallExpression(node: ts.CallExpression) {
         const tc = this.getTypeChecker();
         const signature = tc.getResolvedSignature(node);
-        // const typeName = tc.typeToString(tc.getReturnTypeOfSignature(signature));
         const type = tc.getReturnTypeOfSignature(signature);
 
-        if (type.flags !== ts.TypeFlags.Void && this.isBlackListed(node, tc) && this.isUnused(node)) {
+        if (type.flags !== ts.TypeFlags.Void &&
+            (this.isBlackListed(node, tc) || this.hasMustUseJSDoc(node, tc) ||
+            this.hasMustUseType(node, tc)) && this.isUnused(node)) {
             this.addFailure(this.createFailure(node.getStart(), node.getWidth(), Rule.FUNCTION_FAILURE_STRING));
         }
 
@@ -102,37 +104,69 @@ class CheckReturnValueWalker extends Lint.ProgramAwareRuleWalker {
         switch (node.expression.kind) {
             case ts.SyntaxKind.PropertyAccessExpression:
             case ts.SyntaxKind.ElementAccessExpression:
-                let expressionNode: ts.LeftHandSideExpression =
-                    (node.expression as ts.PropertyAccessExpression | ts.ElementAccessExpression).expression;
+                let expressionNode: ts.LeftHandSideExpression = (node.expression as AccessExpression).expression;
                 const nodeType = tc.getTypeAtLocation(expressionNode);
                 const nodeTypeName = tc.typeToString(nodeType);
-                const nodeSymbolName = (nodeType.symbol) ? nodeType.symbol.name : "";
+                const nodeSymbolName = nodeType.symbol ? nodeType.symbol.name : "";
                 const nodeObject = expressionNode.getText();
                 let nodeFunction = "";
                 if (node.expression.kind === ts.SyntaxKind.PropertyAccessExpression) {
                     nodeFunction = (node.expression as ts.PropertyAccessExpression).name.getText();
-                } else if (node.expression.kind === ts.SyntaxKind.ElementAccessExpression) {
-                    nodeFunction = (node.expression as ts.ElementAccessExpression).argumentExpression.getText();
+                } else if (
+                    node.expression.kind === ts.SyntaxKind.ElementAccessExpression) {
+                    const accessNode = node.expression as ts.ElementAccessExpression;
+                    const argument = accessNode.argumentExpression as ts.Expression;
+                    nodeFunction = argument.getText();
                 }
 
-                if (this.nameBlacklist.indexOf(nodeFunction) >= 0) {
+                if (this.nameBlacklist.hasOwnProperty(nodeFunction)) {
                     return true;
                 } else {
-                    for (const property of this.propertyBlacklist) {
-                        if (property[1] === nodeFunction && (property[0] === nodeTypeName ||
-                            property[0] === nodeSymbolName || property[0] === nodeObject)) {
-                            return true;
-                        }
+                    if (this.propertyBlacklist.hasOwnProperty(`${nodeTypeName}#${nodeFunction}`) ||
+                        this.propertyBlacklist.hasOwnProperty(`${nodeSymbolName}#${nodeFunction}`) ||
+                        this.propertyBlacklist.hasOwnProperty(`${nodeObject}#${nodeFunction}`)) {
+                        return true;
                     }
                 }
                 break;
             case ts.SyntaxKind.Identifier:
-                if (this.nameBlacklist.indexOf((node.expression as ts.Identifier).text) >= 0) {
+                const identifier = node.expression as ts.Identifier;
+                if (this.nameBlacklist.hasOwnProperty(identifier.text)) {
                     return true;
                 }
                 break;
             default:
                 break;
+        }
+        return false;
+    }
+
+    private hasMustUseJSDoc(node: ts.CallExpression, tc: ts.TypeChecker) {
+        const callSymbol = tc.getTypeAtLocation(node.expression).getSymbol();
+        if (!callSymbol) {
+            return false;
+        }
+        for (const comment of callSymbol.getDocumentationComment()) {
+            if (comment.text.trim().toLocaleUpperCase() === "@MUSTUSE") {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private hasMustUseType(node: ts.CallExpression, tc: ts.TypeChecker) {
+        const callSymbol = tc.getTypeAtLocation(node.expression).getSymbol();
+        if (!callSymbol) {
+            return false;
+        }
+        const typeNode = (callSymbol.valueDeclaration as ts.FunctionDeclaration).type;
+        if (typeNode.kind === ts.SyntaxKind.TypeReference) {
+            const refNode = (typeNode as ts.TypeReferenceNode).typeName;
+            if (refNode.kind === ts.SyntaxKind.Identifier) {
+                return (refNode as ts.Identifier).text.toLocaleUpperCase() === "MUSTUSE";
+            } else if (refNode.kind === ts.SyntaxKind.QualifiedName) {
+                return refNode.getText().toLocaleUpperCase() === "MUSTUSE";
+            }
         }
         return false;
     }
