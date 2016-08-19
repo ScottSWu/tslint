@@ -161,17 +161,17 @@ class NoUnusedVariablesWalker extends Lint.RuleWalker {
             // Remove excess whitespace
             newContent = newContent.trim();
             // Consolidate commas, retaining whitespace
-            newContent = newContent.replace(/(\s*)[\s,]*,(\s*)/, "$1,$2");
+            newContent = newContent.replace(/(\s*)[\s,]*,(\s*)/g, "$1,$2");
             // Remove leading commas (e.g. after removing the first specifier)
-            newContent = newContent.replace(/^[\s,]*/, "");
+            newContent = newContent.replace(/^[\s,]*/g, "");
             // Remove leading commas in named imports, retaining whitespace
-            newContent = newContent.replace(/(\{\s*)[\s,]*/, "$1");
+            newContent = newContent.replace(/(\{\s*)[\s,]*/g, "$1");
             // Remove trailing commas in named imports, retaining whitespace
-            newContent = newContent.replace(/[\s,]*?(\s*\})/, "$1");
+            newContent = newContent.replace(/[\s,]*?(\s*\})/g, "$1");
             // Remove empty braces
-            newContent = newContent.replace(/\{[\s]*\}/, "");
+            newContent = newContent.replace(/\{[\s]*\}/g, "");
             // Remove trailing commas
-            newContent = newContent.replace(/[\s,]*$/, "");
+            newContent = newContent.replace(/[\s,]*$/g, "");
 
             if (newContent.length > 0) {
                 replacements.push(this.replaceNode(clause, newContent));
